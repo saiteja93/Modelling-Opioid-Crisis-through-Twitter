@@ -1,6 +1,9 @@
 #!/usr/bin/python 2.7
 # -*- coding: utf8 -*-
 
+#Author - Saiteja Sirikonda
+#Course : Natural Language Processing, Spring 2018 taught by Prof. Chitta Baral
+
 
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer, TfidfTransformer
 from nltk.corpus import stopwords
