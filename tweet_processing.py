@@ -10,30 +10,12 @@ from nltk.corpus import stopwords
 from sklearn.svm import LinearSVC
 import nltk.classify
 import nltk
-import json
+import json, string
 
-
-# # list of text documents
-
-# text = ["does anybody delivers oxycodone ???plssss reply oxycodone",
-# 		"we'll get her straight on the Prozac.",
-# 		"Oxycodone is the shit",
-# 		"The last time I missed my Prozac my OCD shot through the roof and I was on 20mg and now I'm on 40mg oh god today isn't good",
-# 		"Oxycodone doing some great things to my wounds right now"]
-
-#text = ['This is the first document.','This is the second second document.','And the third one.','Is this the first document?']
-#text = ["The quick brown fox jumped fox over the lazy dog."]
-
-#text = ["we'll get her straight on the Prozac."]
-# text = []
-# with open("Merged_Labelled.json", 'r') as f:
-# 	dictionary = json.load(f)
-
-# for dic in dictionary:
-# 	text.append(dic['tweet'])
-
-
-# print len(text)
+#Drug keywords that indicate Opioid use
+array = ["morphine", "methadone", "buprenorphine", "hydrocodone", "oxycodone","heroin", "oxycontin", "perc", "percocet","palladone" , "vicodin", "percodan", "tylox" ,"demerol", "oxy", "roxies","opiates", "oxy", "percocet", "percocets", "hydrocodone", "norco",
+	    	"norcos", "roxy", "roxies", "roxycodone", "roxicodone", "opana", "opanas", "prozac", "painrelief", "painreliever", "painkillers", "addiction", "opium"]
+	    	
 
 # count_vect = CountVectorizer(ngram_range = (1,2), min_df = 1)
 
@@ -71,9 +53,9 @@ import json
 # print(vector.toarray())
 
 
-
+#open the JSON to a list of dictionaries
 with open("Merged_Labelled.json", "r") as f:
-	data = json.load(f)
+	original_data = json.load(f)
 #print type(data)
 
 # print data[:5]
@@ -85,30 +67,61 @@ with open("Merged_Labelled.json", "r") as f:
 # print ("\n")
 # print i["tweet"], i["label"]
 # print len(data)
-
-
+#print data[0]
+# print "the actual JSON", data
+# print "\n"
+data = original_data[:3]
+#print data["tweet"]
+punctuation = "!()-[]{};@#$%?~^&*"
 words = {}
 for i in stopwords.words("english"):
 	k = i.encode("utf8")
 	words[k] = 0
 
 for i in xrange(len(data)):
-	temp_tweet = data[i]["tweet"].lower().encode("utf8")
+	#splitting out each label and tweet
+	temp_tweet, temp_label = "", ""
+	temp_tweet = data[i]["tweet"].lower().encode("utf8").replace(".","").replace("!","").replace(",","")
 	temp_label = data[i]["label"].encode("utf8")
+	# print "extract tweet", temp_tweet
+	# print "extract label", temp_label
+	# print "\n"
 	#print "look for capitals", temp
 	#removing the punctuation marks
 	#temp = t.translate(string.maketrans("",""),string.punctuation)
 	data.pop(i)
+	temp1 = []
 	temp1 = temp_tweet.split(" ")
 	#print "list form", temp1
+	#Removing the stop words
 	temp1 = [x for x in temp1 if x not in words]
+	print temp1
 	#print temp1
-	#print "modified array element", temp1
+	# print "modified", temp1
+	# print "\n"
+	# #Replacing drug instances with "Druginstance" keyword
+	for i,j in enumerate(temp1):
+		# if "\n" in j:
+		# 	new_j = ""
+		# 	for k in j:
+		# 		if k not in punctuation:
+		# 			new_j +=k
+		# 		else: break
+		# 	if new_j in array:
+		# 		temp1[i] = "druginstance" + "\n"
+		if j in array:
+			temp1[i] = "druginstance"
+	print "after drug instance", temp1
+	# print "\n"
 	temp_tweet = " ".join(temp1)
-	temp = {"tweet": temp_tweet.decode("utf8"), "label":temp_label.decode("utf8")}
+	temp = {"tweet".decode("utf8"): temp_tweet.decode("utf8"), "label".decode("utf8"):temp_label.decode("utf8")}
 	#print "string form again", temp
+	print "final", temp
+	print "\n"
 	data.insert(i,temp)
+	raw_input("please press enter ..")
 
+print data
 
 #the first 90% data is for training and the rest for test
 cut_off = int (len(data) * 0.90)
@@ -158,17 +171,3 @@ for d in test_set:
 print 'Total errors: %d' % len(errors)
 
 print 'Accuracy: ', nltk.classify.accuracy(classifier, test_set)
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
