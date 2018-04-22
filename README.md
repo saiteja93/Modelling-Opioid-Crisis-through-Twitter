@@ -13,6 +13,11 @@ We then labelled them as:
 “0”: If the tweet is drug related but not, abuse.
 “1”: If the tweet is drug related and also abuse.
 
+Data Pre-processing:
+We performed various Data Processing steps, like the drug keywords are replaced by "Drug Instance" and all the numbers by "Num" and http links are replaced by LINK and all punctuation by "" etc.
+
 Extracting Features:
-We decided to use the bigram representatiion of the words and for this we decided to use the CountVectorizer of Python's sklearn library. The output of this feature extraction would be fed to the Classifier.
+We decided to use the Trigram representatiion of the words and for this we decided to use the Trigrams feature from the nltk library. The output of this feature extraction would be fed to the Classifier (SVM and Naive Bayes)
+
+
 
