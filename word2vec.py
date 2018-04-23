@@ -7,14 +7,20 @@ import numpy as np
 import pandas as pd
 import re, json, nltk
 from nltk.corpus import stopwords
+# a tweet tokenizer from nltk.
+#from keras.preprocessing.text import Tokenizer 
 from nltk.tokenize import TweetTokenizer # a tweet tokenizer from nltk.
 tokenizer = TweetTokenizer()
-
 from sklearn.model_selection import train_test_split
 import gensim
 from gensim.models.word2vec import Word2Vec
 from gensim.models.deprecated.doc2vec import LabeledSentence
 LabeledSentence = gensim.models.deprecated.doc2vec.LabeledSentence
+from keras.preprocessing.sequence import pad_sequences
+from keras.models import Sequential
+from keras.layers import Dense, Embedding, LSTM, SpatialDropout1D
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import scale
 
 array = ["morphine", "methadone", "buprenorphine", "hydrocodone", "oxycodone","heroin", "oxycontin", "perc", "percocet","palladone" , "vicodin", "percodan", "tylox" ,"demerol", "oxy", "roxies","opiates", "oxy", "percocet", "percocets", "hydrocodone", "norco",
 	    	"norcos", "roxy", "roxies", "roxycodone", "roxicodone", "opana", "opanas", "prozac", "painrelief", "painreliever", "painkillers", "addiction", "opium"]
@@ -46,7 +52,7 @@ def normalize_tweet(tweet):
 
 def feature_extractor(tweet):
 	#remove new lines
-	features_per_tweet = {}
+	max_features = 2000	
 	new_tweet = tweet.strip().lower().encode('ascii', errors='ignore')
 	new_tweet = normalize_tweet(new_tweet)
 	#print new_tweet
@@ -60,12 +66,13 @@ def feature_extractor(tweet):
 	new_tweet = " ".join(words_in_tweet).decode("ascii", errors = "ignore")
 	#print new_tweet
 	#print ("\n")
-
+	
 	tokens = tokenizer.tokenize(new_tweet)
 	
 	#raw_input("please press enter ...")
 
 	return tokens
+
 
 
 
@@ -81,17 +88,24 @@ data = original_data
 # train_data = data[:cut_off]
 # test_data = data[cut_off:]
 
-formatted_data = [(d["label"],feature_extractor(d["tweet"])) for d in data]
+formatted_data = [(d["label"],feature_extractor(d["tweet"])) for d in data if d["label"] != "None"]
 #test_set = [(d["label"],feature_extractor(d["tweet"])) for d in test_data]
-
 df = pd.DataFrame(formatted_data, columns = ["sentiment", "tweet"])
-
-#print df.head(10)
+df = df[df["sentiment"]!= "None"]
+df = df[df["sentiment"]!= "none"]
+df = df[df["sentiment"] != "10"]
+df = df[df["sentiment"] != "01"]
+#print df.head(10)["tweet"]
 #removing the itemid
 #df.drop("index", inplace = True, axis = 1)
 
 x_train, x_test, y_train, y_test = train_test_split(np.array(df.tweet),
-                                                    np.array(df.sentiment), test_size=0.2)
+                                                    np.array(df.sentiment), test_size=0.3)
+y_train = [map(float, x) for x in y_train]
+y_test = [map(float, x) for x in y_test]
+
+#print y_train
+
 
 
 def labelizeTweets(tweets, label_type):
@@ -101,13 +115,13 @@ def labelizeTweets(tweets, label_type):
         labelized.append(LabeledSentence(v, [label]))
     return labelized
 
-x_train = labelizeTweets(x_train, 'TRAIN')
-x_test = labelizeTweets(x_test, 'TEST')
+x_train_label = labelizeTweets(x_train, 'TRAIN')
+x_test_label = labelizeTweets(x_test, 'TEST')
 
 #print x_train[3][1]
 
 word_to_vec = Word2Vec(size = 200, window = 10, min_count=5, workers = 11, alpha = 0.025, iter = 20)
-word_to_vec.build_vocab([x[0] for x in x_train])
+word_to_vec.build_vocab([x[0] for x in x_train_label])
 m = word_to_vec.corpus_count
 #print m
 word_to_vec.train([x[0] for x in x_train], epochs = word_to_vec.iter, total_examples = m)
@@ -116,9 +130,50 @@ word_to_vec.train([x[0] for x in x_train], epochs = word_to_vec.iter, total_exam
 #print tweet_w2v["druginstance"]
 
 #final_embedding = tweet_w2v._nemb_final.eva
-
+#The weight vectors generated from the word2vec are stored in the syn0 dictionary
 pretrained_weights = word_to_vec.wv.syn0
 vocabulary_size, size_embedding = pretrained_weights.shape
 print pretrained_weights.shape
 
 
+
+#Trying to Buid the LSTM network
+print 'building tf-idf matrix ...'
+vectorizer = TfidfVectorizer(analyzer=lambda x: x, min_df=10)
+matrix = vectorizer.fit_transform([x[0] for x in x_train_label])
+tfidf = dict(zip(vectorizer.get_feature_names(), vectorizer.idf_))
+print 'vocab : ', tfidf
+
+#print tfidf[u"druginstance"]
+
+def buildWordVector(tokens, size):
+    vec = np.zeros(size).reshape((1, size))
+    count = 0.
+    for word in tokens:
+        try:
+            vec += word_to_vec[word].reshape((1, size)) * tfidf[word]
+            count += 1.
+        except KeyError: # handling the case where the token is not
+                         # in the corpus. useful for testing.
+            continue
+    if count != 0:
+        vec /= count
+    return vec
+
+train_word_to_vec = np.concatenate([buildWordVector(z, 200) for z in map(lambda x: x.words, x_train_label)])
+train_vecs_w2v = scale(train_word_to_vec)
+
+test_word_to_vec = np.concatenate([buildWordVector(z, 200) for z in map(lambda x: x.words, x_test_label)])
+test_word_to_vec = scale(test_word_to_vec)
+
+model = Sequential()
+model.add(Dense(32, activation='relu', input_dim=200))
+model.add(Dense(1, activation='sigmoid'))
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+model.fit(train_word_to_vec, np.array(y_train), epochs=9, batch_size=32, verbose=2)
+
+score = model.evaluate(test_word_to_vec, np.array(y_test), batch_size=128, verbose=2)
+print score[1]
