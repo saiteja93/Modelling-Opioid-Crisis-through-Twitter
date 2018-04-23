@@ -25,7 +25,7 @@ for i in stopwords.words("english"):
 	words[k] = 0
 
 # regular expressions used to clean up the tweet data
-drug = re.compile('|'.join(array).lower())
+#drug = re.compile('|'.join(array).lower())
 http_re = re.compile(r'\s+http://[^\s]*')
 remove_ellipsis_re = re.compile(r'\.\.\.')
 at_sign_re = re.compile(r'\@\S+')
@@ -35,9 +35,9 @@ number_re = re.compile(r"\d+")
 
 def normalize_tweet(tweet):
     t = tweet.lower()
-    t = re.sub(price_re, 'PRICE', t)
+    #t = re.sub(price_re, 'PRICE', t)
     t = re.sub(remove_ellipsis_re, '', t)
-    t = re.sub(drug, 'druginstance', t)
+    #t = re.sub(drug, 'druginstance', t)
     t = re.sub(http_re, ' LINK', t)
     t = re.sub(punct_re, '', t)
     t = re.sub(at_sign_re, '@', t)
@@ -106,14 +106,19 @@ x_test = labelizeTweets(x_test, 'TEST')
 
 #print x_train[3][1]
 
-tweet_w2v = Word2Vec(size = 200, window = 10, min_count=5, workers = 11, alpha = 0.025, iter = 20)
-tweet_w2v.build_vocab([x[0] for x in x_train])
-m = tweet_w2v.corpus_count
+word_to_vec = Word2Vec(size = 200, window = 10, min_count=5, workers = 11, alpha = 0.025, iter = 20)
+word_to_vec.build_vocab([x[0] for x in x_train])
+m = word_to_vec.corpus_count
 #print m
-tweet_w2v.train([x[0] for x in x_train], epochs = tweet_w2v.iter, total_examples = 2294)
+word_to_vec.train([x[0] for x in x_train], epochs = word_to_vec.iter, total_examples = m)
 
 
 #print tweet_w2v["druginstance"]
 
-final_embedding = tweet_w2v._nemb_final.eval()
+#final_embedding = tweet_w2v._nemb_final.eva
+
+pretrained_weights = word_to_vec.wv.syn0
+vocabulary_size, size_embedding = pretrained_weights.shape
+print pretrained_weights.shape
+
 
