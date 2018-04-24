@@ -32,7 +32,7 @@ for i in stopwords.words("english"):
 	words[k] = 0
 
 # regular expressions used to clean up the tweet data
-#drug = re.compile('|'.join(array).lower())
+drug = re.compile('|'.join(array).lower())
 http_re = re.compile(r'\s+http://[^\s]*')
 remove_ellipsis_re = re.compile(r'\.\.\.')
 at_sign_re = re.compile(r'\@\S+')
@@ -43,9 +43,9 @@ number_re = re.compile(r"\d+")
 def normalize_tweet(tweet):
     #Regular expressions to replace patterns in the Data
     t = tweet.lower()
-    #t = re.sub(price_re, 'PRICE', t)
+    t = re.sub(price_re, 'PRICE', t)
     t = re.sub(remove_ellipsis_re, '', t)
-    #t = re.sub(drug, 'druginstance', t)
+    t = re.sub(drug, 'druginstance', t)
     t = re.sub(http_re, ' LINK', t)
     t = re.sub(punct_re, '', t)
     t = re.sub(at_sign_re, '@', t)
@@ -132,7 +132,7 @@ x_test_label = labelizeTweets(x_test, 'TEST')
 #print x_train[3][0]
 
 #we set the dimensions to 200 (Default). sliding window 10. building Word2vec for words that I have occured a minimum times of 5. 
-word_to_vec = Word2Vec(size = 200, window = 10, min_count=5, workers = 11, alpha = 0.025, iter = 20)
+word_to_vec = Word2Vec(size = 200, window = 10, min_count=10, workers = 11, alpha = 0.025, iter = 20)
 word_to_vec.build_vocab([x[0] for x in x_train_label])
 #Number of words for which vectors are built
 m = word_to_vec.corpus_count
@@ -187,6 +187,7 @@ test_word_to_vec = scale(test_word_to_vec)
 model = Sequential()
 #USing the Keras Built-in Optimizer. Relu for 1st layer and Sigmoid for the next.
 model.add(Dense(100, activation='relu', input_dim=200))
+#model.add(Dense(100, activation = "relu", input_dim = 200))
 model.add(Dense(1, activation='sigmoid'))
 model.compile(optimizer='adam',
               loss='binary_crossentropy',
@@ -196,4 +197,4 @@ model.fit(train_word_to_vec, np.array(y_train), epochs=75, batch_size=32, verbos
 
 #Highest Accuracy achieved 57.35%
 score = model.evaluate(test_word_to_vec, np.array(y_test), batch_size=8, verbose=2)
-print score[1]
+print "the accuracy is", score[1]
